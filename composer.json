@@ -1,0 +1,33 @@
+{
+    "name": "dovutuan/laracom",
+    "description": "Base repository and caching data",
+    "type": "library",
+    "license": "MIT",
+    "version": "1.0",
+    "autoload": {
+        "psr-4": {
+            "Dovutuan\\Laracom\\": "src/"
+        },
+        "files": [
+            "src/DomRepository/Helpers/Constants.php"
+        ]
+    },
+    "authors": [
+        {
+            "name": "dovutuan",
+            "email": "tuando.0598@gmail.com"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require": {
+        "php": "^8.2",
+        "illuminate/support": "^10.4"
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Dovutuan\\Laracom\\DomRepository\\ServiceProvider"
+            ]
+        }
+    }
+}
