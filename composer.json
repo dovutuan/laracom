@@ -1,6 +1,13 @@
 {
     "name": "dovutuan/laracom",
     "description": "Base repository and caching data",
+    "keywords": [
+        "laravel",
+        "repository",
+        "eloquent",
+        "model",
+        "cache"
+    ],
     "type": "library",
     "license": "MIT",
     "version": "1.0",
@@ -18,10 +25,18 @@
             "email": "tuando.0598@gmail.com"
         }
     ],
+    "homepage": "https://github.com/dovutuan/laracom",
+    "support": {
+        "email": "tuando.0598@gmail.com",
+        "issues":"https://github.com/dovutuan/laracom/issues",
+        "wiki":"https://github.com/dovutuan/laracom/wiki",
+        "source":"https://github.com/dovutuan/laracom",
+        "docs": "https://github.com/dovutuan/laracom"
+    },
     "minimum-stability": "stable",
     "require": {
         "php": "^8.2",
-        "illuminate/support": "^10.4"
+        "illuminate/support": "^10.28.0"
     },
     "extra": {
         "laravel": {
