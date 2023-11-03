@@ -2,7 +2,8 @@
 
 namespace Dovutuan\Laracom\DomRepository;
 
-use Closure;
+use Dovutuan\Laracom\DomRepository\Command\MakeRepositoryCommand;
+use Dovutuan\Laracom\DomRepository\Command\MakeServiceCommand;
 use Exception;
 use Illuminate\Support\ServiceProvider as IlluminateServiceProvider;
 
@@ -30,6 +31,8 @@ class ServiceProvider extends IlluminateServiceProvider
      */
     public function boot(): void
     {
-        //
+        if ($this->app->runningInConsole()) {
+            $this->commands([MakeServiceCommand::class, MakeRepositoryCommand::class]);
+        }
     }
 }

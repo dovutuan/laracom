@@ -13,10 +13,10 @@ use Illuminate\Support\Str;
 
 abstract class BaseRepository
 {
-
     private Application $app;
     private ConfigRepository $config;
     protected Model $model;
+    abstract public function model();
 
     protected array $base_search = [];
 

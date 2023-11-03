@@ -25,4 +25,10 @@ const OPERATOR_JSON = '{}';
 const OPERATOR_JSON_NOT_CONTAIN = '!{}';
 
 const OPERATOR_BOOLEAN_AND = 'and';
-const OPERATOR_BOOLEAN_OR = 'OR';
+const OPERATOR_BOOLEAN_OR = 'or';
+
+// define service and repository
+const SERVICE_NAME = 'Service';
+const SERVICES_NAME = 'Services';
+const REPOSITORY_NAME = 'Repository';
+const REPOSITORIES_NAME = 'Repositories';
