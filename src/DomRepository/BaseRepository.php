@@ -3,19 +3,24 @@
 namespace Dovutuan\Laracom\DomRepository;
 
 use Dovutuan\Laracom\DomRepository\Exception\NotFoundException;
+use Dovutuan\Laracom\DomRepository\Interface\RepositoryInterface;
+use Dovutuan\Laracom\DomRepository\Traits\BuildsQueries;
 use Illuminate\Container\Container as Application;
 use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Str;
+use Illuminate\Support\Collection as CollectionAlias;
 
-abstract class BaseRepository
+abstract class BaseRepository implements RepositoryInterface
 {
+    use BuildsQueries;
+
     private Application $app;
     private ConfigRepository $config;
     protected Model $model;
+
     abstract public function model();
 
     protected array $base_search = [];
@@ -45,177 +50,6 @@ abstract class BaseRepository
     }
 
     /**
-     * @param array $conditions
-     * @return Builder
-     */
-    private function buildQuery(array $conditions): Builder
-    {
-        $query = $this->model->newQuery();
-
-        if (count($conditions)) {
-            foreach ($conditions as $key => $value) {
-                $method = 'query' . Str::studly($key);
-
-                if (method_exists($this, $method)) {
-                    $this->{$method}($query, $key, $value);
-                } else {
-                    $field_search = $this->base_search[$key] ?? null;
-                    if ($field_search) {
-                        $query->where(function (Builder $qr) use ($field_search, $value) {
-                            foreach ($field_search as $item) {
-                                $boolean = $item['boolean'] ?? 'and';
-                                if (!isset($item['operator']) || $item['operator'] === OPERATOR_EQUAL) {
-                                    $qr->where($item['column'], '=', $value, $boolean);
-                                } elseif ($item['operator'] === OPERATOR_NOT_EQUAL) {
-                                    $qr->where($item['column'], '<>', $value);
-                                } elseif ($item['operator'] === OPERATOR_LIKE) {
-                                    $qr->where($item['column'], 'like', "%$value%", $boolean);
-                                } elseif ($item['operator'] === OPERATOR_BEFORE_LIKE) {
-                                    $qr->where($item['column'], 'like', "%$value", $boolean);
-                                } elseif ($item['operator'] === OPERATOR_AFTER_LIKE) {
-                                    $qr->where($item['column'], 'like', "$value%", $boolean);
-                                } elseif ($item['operator'] === OPERATOR_NOT_LIKE) {
-                                    $qr->where($item['column'], 'not like', "$value%", $boolean);
-                                } elseif ($item['operator'] === OPERATOR_GREATER) {
-                                    $qr->where($item['column'], '>', $value, $boolean);
-                                } elseif ($item['operator'] === OPERATOR_GREATER_EQUAL) {
-                                    $qr->where($item['column'], '>=', $value, $boolean);
-                                } elseif ($item['operator'] === OPERATOR_LESS) {
-                                    $qr->where($item['column'], '<', $value, $boolean);
-                                } elseif ($item['operator'] === OPERATOR_LES_EQUAL) {
-                                    $qr->where($item['column'], '<=', $value, $boolean);
-                                } elseif ($item['operator'] === OPERATOR_IN) {
-                                    $qr->whereIn($item['column'], $value, $boolean);
-                                } elseif ($item['operator'] === OPERATOR_NOT_IN) {
-                                    $qr->whereNotIn($item['column'], $value, $boolean);
-                                } elseif ($item['operator'] === OPERATOR_NULL) {
-                                    $qr->whereNull($item['column'], $value, $boolean);
-                                } elseif ($item['operator'] === OPERATOR_NOT_NULL) {
-                                    $qr->whereNotNull($item['column'], $value, $boolean);
-                                } elseif ($item['operator'] === OPERATOR_DATE) {
-                                    $qr->whereDate($item['column'], '=', $value, $boolean);
-                                } elseif ($item['operator'] === OPERATOR_DATE_NOT_EQUAL) {
-                                    $qr->whereDate($item['column'], '<>', $value, $boolean);
-                                } elseif ($item['operator'] === OPERATOR_DATE_GREATER) {
-                                    $qr->whereDate($item['column'], '>', $value, $boolean);
-                                } elseif ($item['operator'] === OPERATOR_DATE_GREATER_EQUAL) {
-                                    $qr->whereDate($item['column'] . '>=', $value, $boolean);
-                                } elseif ($item['operator'] === OPERATOR_DATE_LESS) {
-                                    $qr->whereDate($item['column'], '<', $value, $boolean);
-                                } elseif ($item['operator'] === OPERATOR_DATE_LESS_EQUAL) {
-                                    $qr->whereDate($item['column'], '<=', $value, $boolean);
-                                } elseif ($item['operator'] === OPERATOR_JSON) {
-                                    $qr->whereJsonContains($item['column'], $value, $boolean);
-                                } elseif ($item['operator'] === OPERATOR_JSON_NOT_CONTAIN) {
-                                    $qr->whereJsonDoesntContain($item['column'], $value, $boolean);
-                                }
-                            }
-                        });
-                    }
-                }
-            }
-        }
-
-        return $query;
-    }
-
-    /**
-     * @param string|int|null $id
-     * @param array|null $conditions
-     * @param string|array $columns
-     * @param array|string|null $relationships
-     * @param array|string|null $count_relationships
-     * @param bool $throw_exception
-     * @return Model|Builder|array|null
-     * @throws NotFoundException
-     */
-    private function findByIdOrConditions(
-        string|int|null   $id,
-        array|null        $conditions,
-        string|array      $columns = '*',
-        array|string|null $relationships = null,
-        array|string|null $count_relationships = null,
-        bool              $throw_exception = true): Model|Builder|array|null
-    {
-        $model = $id ? $this->model->newQuery()->find($id, $columns) : $this->buildQuery($conditions)->first($columns);
-        if ($model) {
-            $relationships && $model->load($relationships);
-            $count_relationships && $model->loadCount($count_relationships);
-
-            return $model;
-        }
-
-        $throw_exception && (throw new NotFoundException($this->model->getTable() . '_not_found'));
-
-        return null;
-    }
-
-    /**
-     * @param int|string|null $id
-     * @param array|null $conditions
-     * @param array $data
-     * @param array|string|null $relationships
-     * @param array|string|null $count_relationships
-     * @param bool $throw_exception
-     * @return Model|Builder|null
-     * @throws NotFoundException
-     */
-    private function updateByIdOrConditions(
-        int|string|null   $id,
-        array|null        $conditions,
-        array             $data,
-        array|string|null $relationships = null,
-        array|string|null $count_relationships = null,
-        bool              $throw_exception = true): Model|Builder|null
-    {
-        $model = $id ? $this->model->newQuery()->find($id) : $this->buildQuery($conditions)->first();
-        if ($model) {
-            $model->update($data);
-            if ($relationships) $model->load($relationships);
-            if ($count_relationships) $model->loadCount($count_relationships);
-
-            return $model;
-        }
-
-        $throw_exception && (throw new NotFoundException($this->model->getTable() . '_not_found'));
-
-        return null;
-    }
-
-    /**
-     * @param int|string|null $id
-     * @param array|null $conditions
-     * @param bool $throw_exception
-     * @param bool $is_delete_multi
-     * @return null
-     * @throws NotFoundException
-     */
-    private function deleteByIdOrConditions(
-        int|string|null $id,
-        array|null      $conditions,
-        bool            $is_delete_multi = false,
-        bool            $throw_exception = true,
-    )
-    {
-        $model = null;
-        if ($id) {
-            $model = $this->model->newQuery()->find($id);
-        } elseif (!$is_delete_multi && $conditions) {
-            $model = $this->buildQuery($conditions)->first();
-        } elseif ($is_delete_multi && $conditions) {
-            $model = $this->buildQuery($conditions)->get();
-        }
-
-        if ((!$is_delete_multi && $model) || ($is_delete_multi && $model->count())) {
-            $model->delete();
-        }
-
-        $throw_exception && (throw new NotFoundException($this->model->getTable() . '_not_found'));
-
-        return null;
-    }
-
-    /**
      * @param string|int $id
      * @param string|array $columns
      * @param array|string|null $relationships
@@ -229,15 +63,14 @@ abstract class BaseRepository
         string|array      $columns = '*',
         array|string|null $relationships = null,
         array|string|null $count_relationships = null,
-        bool              $throw_exception = true): Model|Collection|Builder|array|null
+        bool              $throw_exception = true): Model|Collection|Builder|null
     {
         return $this->findByIdOrConditions(
-            $id,
-            null,
-            $columns,
-            $relationships,
-            $count_relationships,
-            $throw_exception);
+            id: $id,
+            columns: $columns,
+            relationships: $relationships,
+            count_relationships: $count_relationships,
+            throw_exception: $throw_exception);
     }
 
     /**
@@ -257,12 +90,11 @@ abstract class BaseRepository
         bool              $throw_exception = true): Model|Builder|null
     {
         return $this->findByIdOrConditions(
-            null,
-            $conditions,
-            $columns,
-            $relationships,
-            $count_relationships,
-            $throw_exception);
+            conditions: $conditions,
+            columns: $columns,
+            relationships: $relationships,
+            count_relationships: $count_relationships,
+            throw_exception: $throw_exception);
     }
 
     /**
@@ -277,8 +109,7 @@ abstract class BaseRepository
         array|string|null $count_relationships = null): Model|Builder
     {
         $model = $this->model->newQuery()->create($data);
-        if ($relationships) $model->load($relationships);
-        if ($count_relationships) $model->loadCount($count_relationships);
+        $this->buildRelationship($model, $relationships, $count_relationships);
 
         return $model;
     }
@@ -300,12 +131,11 @@ abstract class BaseRepository
         bool              $throw_exception = true): Model|Builder|null
     {
         return $this->updateByIdOrConditions(
-            $id,
-            null,
-            $data,
-            $relationships,
-            $count_relationships,
-            $throw_exception);
+            data: $data,
+            id: $id,
+            relationships: $relationships,
+            count_relationships: $count_relationships,
+            throw_exception: $throw_exception);
     }
 
     /**
@@ -324,14 +154,12 @@ abstract class BaseRepository
         array|string|null $count_relationships = null,
         bool              $throw_exception = true): Model|Builder|null
     {
-
         return $this->updateByIdOrConditions(
-            null,
-            $conditions,
-            $data,
-            $relationships,
-            $count_relationships,
-            $throw_exception);
+            data: $data,
+            conditions: $conditions,
+            relationships: $relationships,
+            count_relationships: $count_relationships,
+            throw_exception: $throw_exception);
     }
 
     /**
@@ -342,9 +170,11 @@ abstract class BaseRepository
      */
     public function delete(
         string|int $id,
-        bool       $throw_exception = true)
+        bool       $throw_exception = true): null
     {
-        return $this->deleteByIdOrConditions($id, null, false, $throw_exception);
+        return $this->deleteByIdOrConditions(
+            id: $id,
+            throw_exception: $throw_exception);
     }
 
     /**
@@ -355,9 +185,11 @@ abstract class BaseRepository
      */
     public function deleteByConditions(
         array $conditions,
-        bool  $throw_exception = true)
+        bool  $throw_exception = true): null
     {
-        return $this->deleteByIdOrConditions(null, $conditions, false, $throw_exception);
+        return $this->deleteByIdOrConditions(
+            conditions: $conditions,
+            throw_exception: $throw_exception);
     }
 
     /**
@@ -369,8 +201,146 @@ abstract class BaseRepository
     public function deletesByConditions(
         array $conditions,
         bool  $throw_exception = true
-    )
+    ): null
     {
-        return $this->deleteByIdOrConditions(null, $conditions, true, $throw_exception);
+        return $this->deleteByIdOrConditions(
+            conditions: $conditions,
+            is_delete_multi: true,
+            throw_exception: $throw_exception);
+    }
+
+    /**
+     * @param array|null $conditions
+     * @return int
+     */
+    public function count(array|null $conditions = null): int
+    {
+        $query = $this->buildQuery($conditions);
+
+        return $query->count();
+    }
+
+    /**
+     * @param array|null $conditions
+     * @param int $page
+     * @param int $limit
+     * @param string|null $order_by
+     * @param string|null $group_by
+     * @param array|string|null $relationships
+     * @param array|string|null $count_relationships
+     * @param array $columns
+     * @return array
+     */
+    public function paginate(
+        array|null        $conditions = null,
+        int               $page = 0,
+        int               $limit = 10,
+        string            $order_by = null,
+        string            $group_by = null,
+        array|string|null $relationships = null,
+        array|string|null $count_relationships = null,
+        array             $columns = ['*']): array
+    {
+        $total = $this->count($conditions);
+        $results = null;
+        if ($total) {
+            $query = $this->buildQuery($conditions);
+            $this->buildOrderBy($query, $order_by);
+            $this->buildGroupBy($query, $group_by);
+            $this->buildRelationship($query, $relationships, $count_relationships);
+
+            $results = $query
+                ->offset(($page - 1) * $limit)
+                ->limit($limit)
+                ->get($columns);
+        }
+
+        return compact('total', 'results');
+    }
+
+    /**
+     * @param array|null $conditions
+     * @param string|null $order_by
+     * @param string|null $group_by
+     * @param array|string|null $relationships
+     * @param array|string|null $count_relationships
+     * @param array $columns
+     * @return Collection|array
+     */
+    public function all(
+        array|null        $conditions = null,
+        string            $order_by = null,
+        string            $group_by = null,
+        array|string|null $relationships = null,
+        array|string|null $count_relationships = null,
+        array             $columns = ['*']): Collection|array
+    {
+        $query = $this->buildQuery($conditions);
+        $this->buildOrderBy($query, $order_by);
+        $this->buildGroupBy($query, $group_by);
+        $this->buildRelationship($query, $relationships, $count_relationships);
+
+        return $query->get($columns);
+    }
+
+    /**
+     * @param array $data
+     * @return true
+     */
+    public function insert(array $data): true
+    {
+        $this->model->newQuery()->insert($data);
+
+        return true;
+    }
+
+    /**
+     * @param array $conditions
+     * @param array $data
+     * @return Model
+     */
+    public function updateOrCreate(
+        array $conditions,
+        array $data): Model
+    {
+        $model = $this->buildQuery($conditions)->first();
+        if ($model) {
+            $model->update($data);
+        } else {
+            $model = $this->create($data);
+        }
+        return $model;
+    }
+
+    /**
+     * @param array $data
+     * @param array $keys
+     * @param array $columns
+     * @return true
+     */
+    public function upsert(
+        array $data,
+        array $keys,
+        array $columns): true
+    {
+        $this->model->newQuery()->upsert($data, $keys, $columns);
+
+        return true;
+    }
+
+    /**
+     * @param string $column
+     * @param string|null $key
+     * @param array|null $conditions
+     * @return CollectionAlias
+     */
+    public function allAndPluck(
+        string      $column,
+        string|null $key = null,
+        array|null  $conditions = null): CollectionAlias
+    {
+        $query = $this->buildQuery($conditions);
+
+        return $query->pluck($column, $key);
     }
 }

@@ -1,6 +1,6 @@
 <?php
 
-namespace Dovutuan\Laracom\DomRepository;
+namespace Dovutuan\Laracom;
 
 use Dovutuan\Laracom\DomRepository\Command\MakeRepositoryCommand;
 use Dovutuan\Laracom\DomRepository\Command\MakeServiceCommand;
