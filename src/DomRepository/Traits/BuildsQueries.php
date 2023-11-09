@@ -2,6 +2,12 @@
 
 namespace Dovutuan\Laracom\DomRepository\Traits;
 
+use Dovutuan\Laracom\DomRepository\Events\AfterCreateEvent;
+use Dovutuan\Laracom\DomRepository\Events\AfterDeleteEvent;
+use Dovutuan\Laracom\DomRepository\Events\AfterUpdateEvent;
+use Dovutuan\Laracom\DomRepository\Events\BeforeCreateEvent;
+use Dovutuan\Laracom\DomRepository\Events\BeforeDeleteEvent;
+use Dovutuan\Laracom\DomRepository\Events\BeforeUpdateEvent;
 use Dovutuan\Laracom\DomRepository\Exception\NotFoundException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -29,50 +35,76 @@ trait BuildsQueries
                         $query->where(function (Builder $qr) use ($field_search, $value) {
                             foreach ($field_search as $item) {
                                 $boolean = $item['boolean'] ?? 'and';
-                                if (!isset($item['operator']) || $item['operator'] === OPERATOR_EQUAL) {
-                                    $qr->where($item['column'], '=', $value, $boolean);
-                                } elseif ($item['operator'] === OPERATOR_NOT_EQUAL) {
-                                    $qr->where($item['column'], '<>', $value);
-                                } elseif ($item['operator'] === OPERATOR_LIKE) {
-                                    $qr->where($item['column'], 'like', "%$value%", $boolean);
-                                } elseif ($item['operator'] === OPERATOR_BEFORE_LIKE) {
-                                    $qr->where($item['column'], 'like', "%$value", $boolean);
-                                } elseif ($item['operator'] === OPERATOR_AFTER_LIKE) {
-                                    $qr->where($item['column'], 'like', "$value%", $boolean);
-                                } elseif ($item['operator'] === OPERATOR_NOT_LIKE) {
-                                    $qr->where($item['column'], 'not like', "$value%", $boolean);
-                                } elseif ($item['operator'] === OPERATOR_GREATER) {
-                                    $qr->where($item['column'], '>', $value, $boolean);
-                                } elseif ($item['operator'] === OPERATOR_GREATER_EQUAL) {
-                                    $qr->where($item['column'], '>=', $value, $boolean);
-                                } elseif ($item['operator'] === OPERATOR_LESS) {
-                                    $qr->where($item['column'], '<', $value, $boolean);
-                                } elseif ($item['operator'] === OPERATOR_LES_EQUAL) {
-                                    $qr->where($item['column'], '<=', $value, $boolean);
-                                } elseif ($item['operator'] === OPERATOR_IN) {
-                                    $qr->whereIn($item['column'], $value, $boolean);
-                                } elseif ($item['operator'] === OPERATOR_NOT_IN) {
-                                    $qr->whereNotIn($item['column'], $value, $boolean);
-                                } elseif ($item['operator'] === OPERATOR_NULL) {
-                                    $qr->whereNull($item['column'], $value, $boolean);
-                                } elseif ($item['operator'] === OPERATOR_NOT_NULL) {
-                                    $qr->whereNotNull($item['column'], $value);
-                                } elseif ($item['operator'] === OPERATOR_DATE) {
-                                    $qr->whereDate($item['column'], '=', $value, $boolean);
-                                } elseif ($item['operator'] === OPERATOR_DATE_NOT_EQUAL) {
-                                    $qr->whereDate($item['column'], '<>', $value, $boolean);
-                                } elseif ($item['operator'] === OPERATOR_DATE_GREATER) {
-                                    $qr->whereDate($item['column'], '>', $value, $boolean);
-                                } elseif ($item['operator'] === OPERATOR_DATE_GREATER_EQUAL) {
-                                    $qr->whereDate($item['column'] . '>=', $value, $boolean);
-                                } elseif ($item['operator'] === OPERATOR_DATE_LESS) {
-                                    $qr->whereDate($item['column'], '<', $value, $boolean);
-                                } elseif ($item['operator'] === OPERATOR_DATE_LESS_EQUAL) {
-                                    $qr->whereDate($item['column'], '<=', $value, $boolean);
-                                } elseif ($item['operator'] === OPERATOR_JSON) {
-                                    $qr->whereJsonContains($item['column'], $value, $boolean);
-                                } elseif ($item['operator'] === OPERATOR_JSON_NOT_CONTAIN) {
-                                    $qr->whereJsonDoesntContain($item['column'], $value, $boolean);
+                                $operator = !isset($item['operator']) ? OPERATOR_EQUAL : $item['operator'];
+                                $column = $item['column'];
+
+                                switch ($operator) {
+                                    case OPERATOR_EQUAL:
+                                        $qr->where($column, '=', $value, $boolean);
+                                        break;
+                                    case OPERATOR_NOT_EQUAL:
+                                        $qr->where($column, '<>', $value);
+                                        break;
+                                    case OPERATOR_LIKE:
+                                        $qr->where($column, 'like', "%$value%", $boolean);
+                                        break;
+                                    case OPERATOR_BEFORE_LIKE:
+                                        $qr->where($column, 'like', "%$value", $boolean);
+                                        break;
+                                    case OPERATOR_AFTER_LIKE:
+                                        $qr->where($column, 'like', "$value%", $boolean);
+                                        break;
+                                    case OPERATOR_NOT_LIKE:
+                                        $qr->where($column, 'not like', "$value%", $boolean);
+                                        break;
+                                    case OPERATOR_GREATER:
+                                        $qr->where($column, '>', $value, $boolean);
+                                        break;
+                                    case OPERATOR_GREATER_EQUAL:
+                                        $qr->where($column, '>=', $value, $boolean);
+                                        break;
+                                    case OPERATOR_LESS:
+                                        $qr->where($column, '<', $value, $boolean);
+                                        break;
+                                    case OPERATOR_LES_EQUAL:
+                                        $qr->where($column, '<=', $value, $boolean);
+                                        break;
+                                    case OPERATOR_IN:
+                                        $qr->whereIn($column, $value, $boolean);
+                                        break;
+                                    case OPERATOR_NOT_IN:
+                                        $qr->whereNotIn($column, $value, $boolean);
+                                        break;
+                                    case OPERATOR_NULL:
+                                        $qr->whereNull($column, $value, $boolean);
+                                        break;
+                                    case OPERATOR_NOT_NULL:
+                                        $qr->whereNotNull($column, $value);
+                                        break;
+                                    case OPERATOR_DATE:
+                                        $qr->whereDate($column, '=', $value, $boolean);
+                                        break;
+                                    case OPERATOR_DATE_NOT_EQUAL:
+                                        $qr->whereDate($column, '<>', $value, $boolean);
+                                        break;
+                                    case OPERATOR_DATE_GREATER:
+                                        $qr->whereDate($column, '>', $value, $boolean);
+                                        break;
+                                    case OPERATOR_DATE_GREATER_EQUAL:
+                                        $qr->whereDate($column . '>=', $value, $boolean);
+                                        break;
+                                    case OPERATOR_DATE_LESS:
+                                        $qr->whereDate($column, '<', $value, $boolean);
+                                        break;
+                                    case OPERATOR_DATE_LESS_EQUAL:
+                                        $qr->whereDate($column, '<=', $value, $boolean);
+                                        break;
+                                    case OPERATOR_JSON:
+                                        $qr->whereJsonContains($column, $value, $boolean);
+                                        break;
+                                    case OPERATOR_JSON_NOT_CONTAIN:
+                                        $qr->whereJsonDoesntContain($column, $value, $boolean);
+                                        break;
                                 }
                             }
                         });
@@ -179,6 +211,28 @@ trait BuildsQueries
         return null;
     }
 
+
+    /**
+     * @param array $data
+     * @param array|string|null $relationships
+     * @param array|string|null $count_relationships
+     * @return Model|Builder
+     */
+    private function create(
+        array             $data,
+        array|string|null $relationships = null,
+        array|string|null $count_relationships = null): Model|Builder
+    {
+        event(new BeforeCreateEvent($data));
+
+        $model = $this->model->newQuery()->create($data);
+        $this->buildRelationship($model, $relationships, $count_relationships);
+
+        event(new AfterCreateEvent($model->toArray()));
+
+        return $model;
+    }
+
     /**
      * @param array $data
      * @param int|string|null $id
@@ -199,8 +253,13 @@ trait BuildsQueries
     {
         $model = $id ? $this->model->newQuery()->find($id) : $this->buildQuery($conditions)->first();
         if ($model) {
+
+            event(new BeforeUpdateEvent($data));
+
             $model->update($data);
             $this->buildRelationship($model, $relationships, $count_relationships);
+
+            event(new AfterUpdateEvent($data, $model->toArray()));
 
             return $model;
         }
@@ -234,7 +293,12 @@ trait BuildsQueries
         }
 
         if ((!$is_delete_multi && $model) || ($is_delete_multi && $model->count())) {
+
+            event(new BeforeDeleteEvent($model->toArray()));
+
             $model->delete();
+
+            event(new AfterDeleteEvent());
         }
 
         $throw_exception && (throw new NotFoundException($this->model->getTable() . '_not_found'));

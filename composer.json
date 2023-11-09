@@ -10,7 +10,7 @@
     ],
     "type": "library",
     "license": "MIT",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "autoload": {
         "psr-4": {
             "Dovutuan\\Laracom\\": "src/"
@@ -44,7 +44,8 @@
     "extra": {
         "laravel": {
             "providers": [
-                "Dovutuan\\Laracom\\ServiceProvider"
+                "Dovutuan\\Laracom\\ServiceProvider",
+                "Dovutuan\\Laracom\\LogQueryProvider"
             ]
         }
     }

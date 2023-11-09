@@ -2,11 +2,12 @@
 
 namespace Dovutuan\Laracom\DomRepository;
 
+use Dovutuan\Laracom\DomRepository\Events\AfterCreateEvent;
+use Dovutuan\Laracom\DomRepository\Events\BeforeCreateEvent;
 use Dovutuan\Laracom\DomRepository\Exception\NotFoundException;
 use Dovutuan\Laracom\DomRepository\Interface\RepositoryInterface;
 use Dovutuan\Laracom\DomRepository\Traits\BuildsQueries;
 use Illuminate\Container\Container as Application;
-use Illuminate\Contracts\Config\Repository as ConfigRepository;
 use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -18,7 +19,6 @@ abstract class BaseRepository implements RepositoryInterface
     use BuildsQueries;
 
     private Application $app;
-    private ConfigRepository $config;
     protected Model $model;
 
     abstract public function model();
@@ -27,13 +27,11 @@ abstract class BaseRepository implements RepositoryInterface
 
     /**
      * @param Application $app
-     * @param ConfigRepository $config
      * @throws BindingResolutionException
      */
-    public function __construct(Application $app, ConfigRepository $config)
+    public function __construct(Application $app)
     {
         $this->app = $app;
-        $this->config = $config;
         $this->makeModel();
     }
 
@@ -55,7 +53,7 @@ abstract class BaseRepository implements RepositoryInterface
      * @param array|string|null $relationships
      * @param array|string|null $count_relationships
      * @param bool $throw_exception
-     * @return Model|Collection|Builder|array|null
+     * @return Model|Collection|Builder|null
      * @throws NotFoundException
      */
     public function find(
@@ -70,7 +68,8 @@ abstract class BaseRepository implements RepositoryInterface
             columns: $columns,
             relationships: $relationships,
             count_relationships: $count_relationships,
-            throw_exception: $throw_exception);
+            throw_exception: $throw_exception
+        );
     }
 
     /**
@@ -108,8 +107,12 @@ abstract class BaseRepository implements RepositoryInterface
         array|string|null $relationships = null,
         array|string|null $count_relationships = null): Model|Builder
     {
+        event(new BeforeCreateEvent($data));
+
         $model = $this->model->newQuery()->create($data);
         $this->buildRelationship($model, $relationships, $count_relationships);
+
+        event(new AfterCreateEvent($data));
 
         return $model;
     }
@@ -159,7 +162,8 @@ abstract class BaseRepository implements RepositoryInterface
             conditions: $conditions,
             relationships: $relationships,
             count_relationships: $count_relationships,
-            throw_exception: $throw_exception);
+            throw_exception: $throw_exception
+        );
     }
 
     /**
@@ -174,7 +178,8 @@ abstract class BaseRepository implements RepositoryInterface
     {
         return $this->deleteByIdOrConditions(
             id: $id,
-            throw_exception: $throw_exception);
+            throw_exception: $throw_exception
+        );
     }
 
     /**
@@ -189,7 +194,8 @@ abstract class BaseRepository implements RepositoryInterface
     {
         return $this->deleteByIdOrConditions(
             conditions: $conditions,
-            throw_exception: $throw_exception);
+            throw_exception: $throw_exception
+        );
     }
 
     /**
@@ -200,13 +206,13 @@ abstract class BaseRepository implements RepositoryInterface
      */
     public function deletesByConditions(
         array $conditions,
-        bool  $throw_exception = true
-    ): null
+        bool  $throw_exception = true): null
     {
         return $this->deleteByIdOrConditions(
             conditions: $conditions,
             is_delete_multi: true,
-            throw_exception: $throw_exception);
+            throw_exception: $throw_exception
+        );
     }
 
     /**

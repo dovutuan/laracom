@@ -21,7 +21,7 @@ composer require dovutuan/laracom
 
 Publish Configuration
 ```shell
-php artisan vendor:publish --provider ""
+php artisan vendor:publish --tag=laracom
 ```
 
 ## Methods
@@ -184,4 +184,39 @@ $user = $this->userRepository->delete(123);
 Delete entry by conditions in Repository
 ```php
 $user = $this->userRepository->deleteByConditions(['id' => 123]);
+```
+
+Count entry by conditions in Repository
+```php
+$user = $this->userRepository->count(['id' => 123]);
+```
+
+Paginate entry by conditions in Repository
+```php
+$user = $this->userRepository->paginate(['id' => 123]);
+```
+
+All entry by conditions in Repository
+```php
+$user = $this->userRepository->all(['id' => 123]);
+```
+
+Insert entry by conditions in Repository
+```php
+$user = $this->userRepository->inserrt([['name' => 'Hello'], ['name' => 'Hi']]);
+```
+
+Update or create entry by conditions in Repository
+```php
+$user = $this->userRepository->updateOrCreate(['id' => 123], ['name' => 'Hello']);
+```
+
+Upsert entry by conditions in Repository
+```php
+$user = $this->userRepository->update(['id' => 123, 'name' => 'Hello'], ['id'], ['name']);
+```
+
+All and pluck entry by conditions in Repository
+```php
+$user = $this->userRepository->allAndPluck('name', 'id', ['id' => 123]);
 ```
